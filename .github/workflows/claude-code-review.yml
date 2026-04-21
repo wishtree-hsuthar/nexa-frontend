@@ -23,39 +23,48 @@ jobs:
           git diff origin/${{ github.base_ref }} > pr.diff
           head -c 20000 pr.diff > pr_trimmed.diff
 
-      # ✅ Safely convert diff to JSON string (IMPORTANT FIX)
-      - name: Prepare Diff for API
-        id: prep
+      # ✅ Build request JSON safely using jq
+      - name: Build Claude Request
         run: |
-          DIFF=$(jq -Rs . < pr_trimmed.diff)
-          echo "diff=$DIFF" >> $GITHUB_OUTPUT
+          PROMPT=$(cat <<EOF
+You are a senior software engineer performing a code review.
+
+Review the following git diff and provide:
+- Bugs
+- Security issues
+- Performance concerns
+- Code quality improvements
+- Suggestions with examples
+
+Diff:
+$(cat pr_trimmed.diff)
+EOF
+)
+
+          jq -n \
+            --arg prompt "$PROMPT" \
+            '{
+              model: "claude-3-haiku-latest",
+              max_tokens: 800,
+              messages: [
+                {
+                  role: "user",
+                  content: [
+                    { type: "text", text: $prompt }
+                  ]
+                }
+              ]
+            }' > request.json
 
       - name: Call Claude API
         run: |
-          RESPONSE=$(curl https://api.anthropic.com/v1/messages \
+          curl https://api.anthropic.com/v1/messages \
             -s \
             -H "Content-Type: application/json" \
             -H "x-api-key: ${{ secrets.CLAUDE_API_KEY }}" \
             -H "anthropic-version: 2023-06-01" \
-            -d "{
-              \"model\": \"claude-3-haiku-latest\",
-              \"max_tokens\": 800,
-              \"messages\": [
-                {
-                  \"role\": \"user\",
-                  \"content\": [
-                    {
-                      \"type\": \"text\",
-                      \"text\": \"You are a senior software engineer performing a code review.\\n\\nReview the following git diff and provide:\\n- Bugs\\n- Security issues\\n- Performance concerns\\n- Code quality improvements\\n- Suggestions with examples\\n\\nDiff:\\n\" + ${{ steps.prep.outputs.diff }}
-                    }
-                  ]
-                }
-              ]
-            }")
+            -d @request.json > response.json
 
-          echo "$RESPONSE" > response.json
-
-      # ✅ Debug step (you can remove later)
       - name: Debug Claude Response
         run: |
           cat response.json
@@ -64,13 +73,12 @@ jobs:
         id: extract
         run: |
           if jq -e '.error' response.json > /dev/null; then
-            ERROR_MSG=$(jq -r '.error.message' response.json)
-            COMMENT="❌ Claude API Error:\n$ERROR_MSG"
+            COMMENT="❌ Claude API Error:\n$(jq -r '.error.message' response.json)"
           else
             COMMENT=$(jq -r '.content[0].text // empty' response.json)
 
             if [ -z "$COMMENT" ]; then
-              COMMENT="⚠️ Claude returned empty response. Check workflow logs."
+              COMMENT="⚠️ Claude returned empty response. Check logs."
             fi
           fi
 
