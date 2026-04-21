@@ -1,0 +1,11 @@
+name: Claude AI Code Review
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Workflow is working"
