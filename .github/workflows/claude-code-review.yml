@@ -23,6 +23,13 @@ jobs:
           git diff origin/${{ github.base_ref }} > pr.diff
           head -c 20000 pr.diff > pr_trimmed.diff
 
+      # ✅ Safely convert diff to JSON string (IMPORTANT FIX)
+      - name: Prepare Diff for API
+        id: prep
+        run: |
+          DIFF=$(jq -Rs . < pr_trimmed.diff)
+          echo "diff=$DIFF" >> $GITHUB_OUTPUT
+
       - name: Call Claude API
         run: |
           RESPONSE=$(curl https://api.anthropic.com/v1/messages \
@@ -30,31 +37,43 @@ jobs:
             -H "Content-Type: application/json" \
             -H "x-api-key: ${{ secrets.CLAUDE_API_KEY }}" \
             -H "anthropic-version: 2023-06-01" \
-            -d @- <<EOF
-          {
-            "model": "claude-3-haiku-20240307",
-            "max_tokens": 800,
-            "messages": [
-              {
-                "role": "user",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "Review this PR diff and give actionable feedback:\n\n$(cat pr_trimmed.diff)"
-                  }
-                ]
-              }
-            ]
-          }
-          EOF
-          )
+            -d "{
+              \"model\": \"claude-3-haiku-latest\",
+              \"max_tokens\": 800,
+              \"messages\": [
+                {
+                  \"role\": \"user\",
+                  \"content\": [
+                    {
+                      \"type\": \"text\",
+                      \"text\": \"You are a senior software engineer performing a code review.\\n\\nReview the following git diff and provide:\\n- Bugs\\n- Security issues\\n- Performance concerns\\n- Code quality improvements\\n- Suggestions with examples\\n\\nDiff:\\n\" + ${{ steps.prep.outputs.diff }}
+                    }
+                  ]
+                }
+              ]
+            }")
 
           echo "$RESPONSE" > response.json
+
+      # ✅ Debug step (you can remove later)
+      - name: Debug Claude Response
+        run: |
+          cat response.json
 
       - name: Extract Claude Response
         id: extract
         run: |
-          COMMENT=$(jq -r '.content[0].text // "No response from Claude"' response.json)
+          if jq -e '.error' response.json > /dev/null; then
+            ERROR_MSG=$(jq -r '.error.message' response.json)
+            COMMENT="❌ Claude API Error:\n$ERROR_MSG"
+          else
+            COMMENT=$(jq -r '.content[0].text // empty' response.json)
+
+            if [ -z "$COMMENT" ]; then
+              COMMENT="⚠️ Claude returned empty response. Check workflow logs."
+            fi
+          fi
+
           echo "comment<<EOF" >> $GITHUB_OUTPUT
           echo "$COMMENT" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
