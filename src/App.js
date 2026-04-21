@@ -15,6 +15,20 @@ const ResetPassword = React.lazy(() => import("./Pages/ResetPassword"));
 const FallBackUI = React.lazy(() => import("./Pages/FallBackUI"));
 const ForgetPassword = React.lazy(() => import("./Pages/ForgetPassword"));
 axios.defaults.withCredentials = true;
+
+
+// This is the test file
+
+const abcd = 1;
+
+const abcd = 1;
+
+const abcd = 1;
+
+const abcd = 1;
+
+const abcd = 1;
+
 function App() {
   return (
     <React.Fragment>
