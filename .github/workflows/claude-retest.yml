@@ -1,0 +1,106 @@
+name: Claude ReTest
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  claude-review:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Fetch PR diff
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git fetch origin ${{ github.base_ref }}
+            git diff origin/${{ github.base_ref }} > pr.diff
+          else
+            git diff HEAD~1 > pr.diff
+          fi
+
+          head -c 20000 pr.diff > pr_trimmed.diff
+
+      - name: Build Claude request payload
+        run: |
+          echo "You are a senior software engineer performing a code review." > prompt.txt
+          echo "" >> prompt.txt
+          echo "Review the following git diff and provide:" >> prompt.txt
+          echo "- Bugs" >> prompt.txt
+          echo "- Security issues" >> prompt.txt
+          echo "- Performance concerns" >> prompt.txt
+          echo "- Code quality improvements" >> prompt.txt
+          echo "- Suggestions with examples" >> prompt.txt
+          echo "" >> prompt.txt
+          echo "Diff:" >> prompt.txt
+          cat pr_trimmed.diff >> prompt.txt
+
+          jq -n \
+            --rawfile prompt prompt.txt \
+            '{
+              model: "claude-3-haiku-latest",
+              max_tokens: 800,
+              messages: [
+                {
+                  role: "user",
+                  content: [
+                    {
+                      type: "text",
+                      text: $prompt
+                    }
+                  ]
+                }
+              ]
+            }' > request.json
+
+      - name: Call Claude API
+        run: |
+          curl https://api.anthropic.com/v1/messages \
+            -s \
+            -H "Content-Type: application/json" \
+            -H "x-api-key: ${{ secrets.CLAUDE_API_KEY }}" \
+            -H "anthropic-version: 2023-06-01" \
+            -d @request.json > response.json
+
+      - name: Debug Claude response
+        run: |
+          echo "===== Claude API Raw Response ====="
+          cat response.json
+
+      - name: Extract Claude review
+        id: extract
+        run: |
+          if jq -e '.error' response.json > /dev/null; then
+            COMMENT="❌ Claude API Error:\n$(jq -r '.error.message' response.json)"
+          else
+            COMMENT=$(jq -r '.content[0].text // empty' response.json)
+
+            if [ -z "$COMMENT" ]; then
+              COMMENT="⚠️ Claude returned empty response. Check logs."
+            fi
+          fi
+
+          echo "comment<<EOF" >> $GITHUB_OUTPUT
+          echo "$COMMENT" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Post comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const comment = `${{ steps.extract.outputs.comment }}`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: "## 🤖 Claude AI Review\n\n" + comment
+            });
