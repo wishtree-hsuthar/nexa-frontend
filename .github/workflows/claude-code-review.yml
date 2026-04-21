@@ -14,17 +14,16 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Get PR Diff
+      - name: Fetch PR diff
         run: |
           git fetch origin ${{ github.base_ref }}
           git diff origin/${{ github.base_ref }} > pr.diff
           head -c 20000 pr.diff > pr_trimmed.diff
 
-      # ✅ Build request JSON safely using jq
-      - name: Build Claude Request
+      - name: Build Claude request payload
         run: |
           PROMPT=$(cat <<EOF
 You are a senior software engineer performing a code review.
@@ -50,7 +49,10 @@ EOF
                 {
                   role: "user",
                   content: [
-                    { type: "text", text: $prompt }
+                    {
+                      type: "text",
+                      text: $prompt
+                    }
                   ]
                 }
               ]
@@ -65,11 +67,12 @@ EOF
             -H "anthropic-version: 2023-06-01" \
             -d @request.json > response.json
 
-      - name: Debug Claude Response
+      - name: Debug Claude response
         run: |
+          echo "===== Claude API Raw Response ====="
           cat response.json
 
-      - name: Extract Claude Response
+      - name: Extract Claude review
         id: extract
         run: |
           if jq -e '.error' response.json > /dev/null; then
@@ -86,7 +89,7 @@ EOF
           echo "$COMMENT" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
-      - name: Post Comment on PR
+      - name: Post comment on PR
         uses: actions/github-script@v7
         with:
           script: |
