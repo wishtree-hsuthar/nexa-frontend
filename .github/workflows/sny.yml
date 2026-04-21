@@ -1,90 +1,90 @@
-name: Snyk Security Scan for JavaScript
+# name: Snyk Security Scan for JavaScript
 
-on:
-  pull_request:
-    branches: [ main, master ]
-  push:
-    branches: [ main, master ]
+# on:
+#   pull_request:
+#     branches: [ main, master ]
+#   push:
+#     branches: [ main, master ]
 
-jobs:
-  snyk_security_check:
-    runs-on: ubuntu-latest
+# jobs:
+#   snyk_security_check:
+#     runs-on: ubuntu-latest
 
-    permissions:
-      contents: read
-      security-events: write
-      actions: read
-      pull-requests: write   # 👈 REQUIRED for PR comments
+#     permissions:
+#       contents: read
+#       security-events: write
+#       actions: read
+#       pull-requests: write   # 👈 REQUIRED for PR comments
 
-    steps:
-      # 1. Checkout source code
-      - name: Checkout Code
-        uses: actions/checkout@v4
+#     steps:
+#       # 1. Checkout source code
+#       - name: Checkout Code
+#         uses: actions/checkout@v4
 
-      # 2. Setup Node.js
-      - name: Setup Node.js Environment
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
+#       # 2. Setup Node.js
+#       - name: Setup Node.js Environment
+#         uses: actions/setup-node@v4
+#         with:
+#           node-version: '20'
 
-      # 3. Install dependencies
-      - name: Install dependencies
-        run: npm install
+#       # 3. Install dependencies
+#       - name: Install dependencies
+#         run: npm install
 
-      # 4. Snyk Security Test (PR Gate)
-      - name: Snyk Security Gate (Test)
-        id: snyk_test
-        uses: snyk/actions/node@v1
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-          SNYK_ORG: ${{ secrets.SNYK_ORG }}
-        with:
-          args: >
-            --severity-threshold=high
-            --org=${{ secrets.SNYK_ORG }}
-            --project-name=pr74-cgf-hrdd-web-front
-            --tags=system=my-system,team=platform,env=prod
-            --fail-on=all
-            --sarif-file-output=snyk-report.sarif
+#       # 4. Snyk Security Test (PR Gate)
+#       - name: Snyk Security Gate (Test)
+#         id: snyk_test
+#         uses: snyk/actions/node@v1
+#         env:
+#           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+#           SNYK_ORG: ${{ secrets.SNYK_ORG }}
+#         with:
+#           args: >
+#             --severity-threshold=high
+#             --org=${{ secrets.SNYK_ORG }}
+#             --project-name=pr74-cgf-hrdd-web-front
+#             --tags=system=my-system,team=platform,env=prod
+#             --fail-on=all
+#             --sarif-file-output=snyk-report.sarif
 
-      # 5. Snyk Monitor (Upload snapshot to Snyk dashboard)
-      - name: Snyk Monitor (Upload Snapshot)
-        if: always()
-        uses: snyk/actions/node@v1
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-          SNYK_ORG: ${{ secrets.SNYK_ORG }}
-        with:
-          command: monitor
-          args: >
-            --org=${{ secrets.SNYK_ORG }}
-            --project-name=my-system-name
-            --tags=system=my-system,team=platform,env=prod
+#       # 5. Snyk Monitor (Upload snapshot to Snyk dashboard)
+#       - name: Snyk Monitor (Upload Snapshot)
+#         if: always()
+#         uses: snyk/actions/node@v1
+#         env:
+#           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+#           SNYK_ORG: ${{ secrets.SNYK_ORG }}
+#         with:
+#           command: monitor
+#           args: >
+#             --org=${{ secrets.SNYK_ORG }}
+#             --project-name=my-system-name
+#             --tags=system=my-system,team=platform,env=prod
 
-      # 6. Upload SARIF report to GitHub Code Scanning
-      - name: Upload Snyk Report to GitHub Code Scanning
-        if: always()
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: snyk-report.sarif
+#       # 6. Upload SARIF report to GitHub Code Scanning
+#       - name: Upload Snyk Report to GitHub Code Scanning
+#         if: always()
+#         uses: github/codeql-action/upload-sarif@v3
+#         with:
+#           sarif_file: snyk-report.sarif
 
-      # 7. 💬 Comment on PR if Snyk scan fails
-      - name: Comment on PR if Snyk scan fails
-        if: failure() && github.event_name == 'pull_request'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body: `🚨 **Snyk Security Scan Failed**
+#       # 7. 💬 Comment on PR if Snyk scan fails
+#       - name: Comment on PR if Snyk scan fails
+#         if: failure() && github.event_name == 'pull_request'
+#         uses: actions/github-script@v7
+#         with:
+#           script: |
+#             github.rest.issues.createComment({
+#               owner: context.repo.owner,
+#               repo: context.repo.repo,
+#               issue_number: context.issue.number,
+#               body: `🚨 **Snyk Security Scan Failed**
               
-              High or critical vulnerabilities were detected in this pull request.
+#               High or critical vulnerabilities were detected in this pull request.
               
-              🔍 Please check:
-              - **GitHub Actions logs** for details
-              - **Snyk dashboard** for full vulnerability insights
+#               🔍 Please check:
+#               - **GitHub Actions logs** for details
+#               - **Snyk dashboard** for full vulnerability insights
               
-              🛑 This PR is blocked until the issues are resolved or acknowledged.`
-                          })
+#               🛑 This PR is blocked until the issues are resolved or acknowledged.`
+#                           })
