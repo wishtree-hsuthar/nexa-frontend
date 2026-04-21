@@ -4,6 +4,11 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
 
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
 jobs:
   claude-review:
     runs-on: ubuntu-latest
@@ -13,14 +18,12 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Get PR Diff
-        id: diff
         run: |
           git fetch origin ${{ github.base_ref }}
           git diff origin/${{ github.base_ref }} > pr.diff
           head -c 20000 pr.diff > pr_trimmed.diff
 
       - name: Call Claude API
-        id: claude
         run: |
           RESPONSE=$(curl https://api.anthropic.com/v1/messages \
             -s \
@@ -37,7 +40,7 @@ jobs:
                 "content": [
                   {
                     "type": "text",
-                    "text": "You are a senior software engineer performing a code review.\n\nReview the following git diff and provide:\n- Bugs\n- Security issues\n- Performance concerns\n- Code quality improvements\n- Suggestions with examples\n\nDiff:\n$(cat pr_trimmed.diff)"
+                    "text": "Review this PR diff and give actionable feedback:\n\n$(cat pr_trimmed.diff)"
                   }
                 ]
               }
@@ -51,7 +54,7 @@ jobs:
       - name: Extract Claude Response
         id: extract
         run: |
-          COMMENT=$(jq -r '.content[0].text' response.json)
+          COMMENT=$(jq -r '.content[0].text // "No response from Claude"' response.json)
           echo "comment<<EOF" >> $GITHUB_OUTPUT
           echo "$COMMENT" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
