@@ -1,4 +1,4 @@
-name: Claude ReTest
+name: Claude ReTest Again
 
 on:
   push:
@@ -16,19 +16,28 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 2   # IMPORTANT: needed for HEAD~1
 
-      - name: Fetch PR diff
+      - name: Generate diff
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             git fetch origin ${{ github.base_ref }}
             git diff origin/${{ github.base_ref }} > pr.diff
           else
-            git diff HEAD~1 > pr.diff
+            # Safe handling for push events
+            if git rev-parse HEAD~1 >/dev/null 2>&1; then
+              git diff HEAD~1 HEAD > pr.diff
+            else
+              echo "No previous commit found, using current commit"
+              git show > pr.diff
+            fi
           fi
 
+          # Limit size to avoid token issues
           head -c 20000 pr.diff > pr_trimmed.diff
 
-      - name: Build Claude request payload
+      - name: Build Claude request
         run: |
           echo "You are a senior software engineer performing a code review." > prompt.txt
           echo "" >> prompt.txt
@@ -71,7 +80,7 @@ jobs:
 
       - name: Debug Claude response
         run: |
-          echo "===== Claude API Raw Response ====="
+          echo "===== Claude API Response ====="
           cat response.json
 
       - name: Extract Claude review
