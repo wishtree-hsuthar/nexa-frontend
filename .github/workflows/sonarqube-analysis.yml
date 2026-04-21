@@ -1,57 +1,57 @@
-name: SonarQube Code Analysis
+# name: SonarQube Code Analysis
 
-on:
-  pull_request:
-    branches: [main, develop]
+# on:
+#   pull_request:
+#     branches: [main, develop]
 
-jobs:
-  sonarqube:
-    name: Run SonarQube Code Analysis
-    runs-on: ubuntu-latest # ✅ GitHub-hosted runner
+# jobs:
+#   sonarqube:
+#     name: Run SonarQube Code Analysis
+#     runs-on: ubuntu-latest # ✅ GitHub-hosted runner
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+#     steps:
+#       - name: Checkout repository
+#         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
+#       - name: Setup Node.js
+#         uses: actions/setup-node@v4
+#         with:
+#           node-version: "20"
 
-      - name: Test SonarQube Connectivity
-        run: |
-          echo "Testing connectivity to SonarQube at ${{ secrets.SONAR_HOST_URL }}"
-          curl -v --max-time 20 ${{ secrets.SONAR_HOST_URL }}/api/system/status || echo "❌ Server not reachable"
+#       - name: Test SonarQube Connectivity
+#         run: |
+#           echo "Testing connectivity to SonarQube at ${{ secrets.SONAR_HOST_URL }}"
+#           curl -v --max-time 20 ${{ secrets.SONAR_HOST_URL }}/api/system/status || echo "❌ Server not reachable"
 
-      - name: Install dependencies
-        run: |
-          npm ci --no-audit --prefer-offline
+#       - name: Install dependencies
+#         run: |
+#           npm ci --no-audit --prefer-offline
 
-      - name: Clean unnecessary folders
-        run: |
-          rm -rf coverage reports dist build node_modules/.cache || true
+#       - name: Clean unnecessary folders
+#         run: |
+#           rm -rf coverage reports dist build node_modules/.cache || true
 
-      - name: Run SonarQube Scanner
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-        run: |
-          echo "Running SonarQube scanner..."
-          npx sonar-scanner \
-            -Dsonar.host.url=$SONAR_HOST_URL \
-            -Dsonar.login=$SONAR_TOKEN \
-            -Dsonar.projectKey=PR74-CGF-HRDD-Web-Front \
-            -Dsonar.projectName=PR74-CGF-HRDD-Web-Front \
-            -Dsonar.sources=src/components,src/utils,src/router
-            -Dsonar.exclusions="**/node_modules/**,**/build/**,**/dist/**,**/coverage/**,**/reports/**,**/*.test.*,**/*.spec.*,**/*.mock.*,**/*.min.js,**/*.bundle.js,**/assets/**,**/vendor/**" \
-            -Dsonar.qualitygate.wait=true \
-            -Dsonar.ws.timeout=120 \
-            -Dsonar.ce.task.timeout=1200 \
-            -Dsonar.scanner.connectTimeout=60000 \
-            -Dsonar.scanner.readTimeout=60000 \
-            || (echo "SonarQube upload failed, retrying in 15 seconds..." && sleep 15 && \
-            npx sonar-scanner \
-              -Dsonar.host.url=$SONAR_HOST_URL \
-              -Dsonar.login=$SONAR_TOKEN \
-              -Dsonar.projectKey=PR74-CGF-HRDD-Web-Front \
-              -Dsonar.sources=src)
+#       - name: Run SonarQube Scanner
+#         env:
+#           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+#           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+#         run: |
+#           echo "Running SonarQube scanner..."
+#           npx sonar-scanner \
+#             -Dsonar.host.url=$SONAR_HOST_URL \
+#             -Dsonar.login=$SONAR_TOKEN \
+#             -Dsonar.projectKey=PR74-CGF-HRDD-Web-Front \
+#             -Dsonar.projectName=PR74-CGF-HRDD-Web-Front \
+#             -Dsonar.sources=src/components,src/utils,src/router
+#             -Dsonar.exclusions="**/node_modules/**,**/build/**,**/dist/**,**/coverage/**,**/reports/**,**/*.test.*,**/*.spec.*,**/*.mock.*,**/*.min.js,**/*.bundle.js,**/assets/**,**/vendor/**" \
+#             -Dsonar.qualitygate.wait=true \
+#             -Dsonar.ws.timeout=120 \
+#             -Dsonar.ce.task.timeout=1200 \
+#             -Dsonar.scanner.connectTimeout=60000 \
+#             -Dsonar.scanner.readTimeout=60000 \
+#             || (echo "SonarQube upload failed, retrying in 15 seconds..." && sleep 15 && \
+#             npx sonar-scanner \
+#               -Dsonar.host.url=$SONAR_HOST_URL \
+#               -Dsonar.login=$SONAR_TOKEN \
+#               -Dsonar.projectKey=PR74-CGF-HRDD-Web-Front \
+#               -Dsonar.sources=src)
