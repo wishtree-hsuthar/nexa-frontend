@@ -15,6 +15,17 @@ const ResetPassword = React.lazy(() => import("./Pages/ResetPassword"));
 const FallBackUI = React.lazy(() => import("./Pages/FallBackUI"));
 const ForgetPassword = React.lazy(() => import("./Pages/ForgetPassword"));
 axios.defaults.withCredentials = true;
+
+const thisIsTemp = 1;
+// This is the temp variable
+
+// This is the temp variable
+// This is the temp variable
+// This is the temp variable
+// This is the temp variable
+// This is the temp variable
+// This is the temp variable
+
 function App() {
   return (
     <React.Fragment>
