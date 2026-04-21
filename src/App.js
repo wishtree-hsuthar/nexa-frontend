@@ -15,8 +15,15 @@ const ResetPassword = React.lazy(() => import("./Pages/ResetPassword"));
 const FallBackUI = React.lazy(() => import("./Pages/FallBackUI"));
 const ForgetPassword = React.lazy(() => import("./Pages/ForgetPassword"));
 axios.defaults.withCredentials = true;
+
+const aTestVariable = 2;
+
 function App() {
   return (
+
+
+
+    
     <React.Fragment>
       <Suspense fallback={<Loader />}>
         <Routes>
