@@ -36,6 +36,13 @@ jobs:
 
           # Limit size to avoid token issues
           head -c 20000 pr.diff > pr_trimmed.diff
+      - name: List available models
+        run: |
+          echo "Fetching available models..."
+          curl https://api.anthropic.com/v1/models \
+            -s \
+            -H "x-api-key: ${{ secrets.CLAUDE_API_KEY }}" \
+            -H "anthropic-version: 2023-06-01" | jq
 
       - name: Build Claude request
         run: |
