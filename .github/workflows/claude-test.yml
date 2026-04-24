@@ -1,11 +1,11 @@
-name: Claude Test
+# name: Claude Test
 
-on:
-  push:
-  pull_request:
+# on:
+#   push:
+#   pull_request:
 
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo "Workflow is working"
+# jobs:
+#   test:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - run: echo "Workflow is working"
