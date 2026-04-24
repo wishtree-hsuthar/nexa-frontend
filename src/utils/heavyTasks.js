@@ -1,11 +1,10 @@
-// global state (memory leak)
-let cache = [];
-let bigData = [];
+let cache = {};
+let hugeArray = [];
 
 export function heavyComputation(arr) {
   let result = [];
 
-  // O(n^2)
+  // ❌ O(n^2)
   for (let i = 0; i < arr.length; i++) {
     for (let j = 0; j < arr.length; j++) {
       if (arr[i] === arr[j]) {
@@ -14,43 +13,32 @@ export function heavyComputation(arr) {
     }
   }
 
-  cache.push(result); // leak
+  cache[Math.random()] = result; // ❌ unbounded growth
   return result;
 }
 
 export function generateData() {
-  // unbounded memory growth
-  for (let i = 0; i < 100000; i++) {
-    bigData.push({
+  for (let i = 0; i < 200000; i++) {
+    hugeArray.push({
       id: i,
       value: Math.random(),
     });
   }
-  return bigData;
+  return hugeArray;
+}
+
+export function regexDos(input) {
+  // ❌ ReDoS vulnerability
+  const regex = /(a+)+$/;
+  return regex.test(input);
 }
 
 export function blockMainThread() {
-  let count = 0;
+  let x = 0;
 
-  // CPU blocking
-  for (let i = 0; i < 500000000; i++) {
-    count += i;
+  for (let i = 0; i < 700000000; i++) {
+    x += i;
   }
 
-  return count;
-}
-
-// inefficient duplicate logic
-export function findDuplicates(arr) {
-  let duplicates = [];
-
-  for (let i = 0; i < arr.length; i++) {
-    for (let j = i + 1; j < arr.length; j++) {
-      if (arr[i] === arr[j]) {
-        duplicates.push(arr[i]);
-      }
-    }
-  }
-
-  return duplicates;
+  return x;
 }

@@ -3,49 +3,60 @@ import {
   heavyComputation,
   generateData,
   blockMainThread,
-} from "../utils/heavyTasks";
+} from "../utils/perfIssues";
 import { getUser, searchUsers } from "../services/badApi";
 
-function BadDashboard() {
+function NewDashboard() {
   const [data, setData] = useState([]);
   const [user, setUser] = useState(null);
   const [search, setSearch] = useState("");
   const [results, setResults] = useState([]);
 
-  // memory leak (interval not cleared)
+  // ❌ memory leak + unnecessary interval
   useEffect(() => {
     setInterval(() => {
-      console.log("running...");
-    }, 1000);
+      console.log("tick");
+    }, 500);
   }, []);
 
-  // unnecessary heavy computation on mount
+  // ❌ over-fetching (runs every render)
+  useEffect(() => {
+    getUser("1").then((res) => setUser(res));
+  });
+
+  // ❌ generate large dataset
   useEffect(() => {
     const d = generateData();
     setData(d);
   }, []);
 
-  // no error handling
+  // ❌ infinite loop
   useEffect(() => {
-    getUser("1").then((res) => {
-      setUser(res);
-    });
-  }, []);
+    if (data.length > 0) {
+      setData([...data]);
+    }
+  }, [data]);
 
-  // expensive recompute every render
+  // ❌ expensive recompute every render
   const processed = heavyComputation(data);
 
-  const handleSearch = async () => {
-    const res = await searchUsers(search); // injection risk
+  // ❌ unthrottled API calls
+  const handleSearch = async (value) => {
+    setSearch(value);
+    const res = await searchUsers(value);
     setResults(res.data);
   };
+
+  // ❌ sorting mutates state
+  const sorted = data.sort((a, b) => a.value - b.value);
 
   return (
     <div>
       <h1>Dashboard</h1>
 
+      {/* ❌ inline fn */}
       <button onClick={() => setData([...data, Math.random()])}>
-        Add Random
+        Add
       </button>
 
       <button onClick={() => blockMainThread()}>
@@ -54,30 +65,27 @@ function BadDashboard() {
 
       <input
         value={search}
-        onChange={(e) => setSearch(e.target.value)}
+        onChange={(e) => handleSearch(e.target.value)}
       />
 
-      <button onClick={handleSearch}>Search</button>
-
-      {/* bad key usage */}
-      {processed.map((item, index) => (
-        <div key={index}>{item}</div>
+      {/* ❌ large list rendering */}
+      {sorted.map((item, index) => (
+        <div key={index}>{item.value}</div>
       ))}
 
-      {/* no null safety */}
+      {/* ❌ unsafe access */}
       <div>{user.name}</div>
 
-      {/* nested render complexity */}
-      {results &&
-        results.map((r, i) => {
-          if (r.active) {
-            return <div key={i}>{r.name}</div>;
-          } else {
-            return <span key={i}>{r.name}</span>;
-          }
-        })}
+      {/* ❌ nested render + bad keys */}
+      {processed.map((x, i) => {
+        if (x > 0.5) {
+          return <div key={i}>{x}</div>;
+        } else {
+          return <span key={i}>{x}</span>;
+        }
+      })}
     </div>
   );
 }
 
-export default BadDashboard;
+export default NewDashboard;
